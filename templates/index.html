@@ -1,34 +1,35 @@
 <!doctype html>
 <html>
     <head>
-        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+      <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.12.1/css/all.css" crossorigin="anonymous">
+      <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title> Ernie Cam</title>
     </head>
     <body>
-        <h1>Flask & Twilio Video Conference</h1>
-        <form>
-            <label for="username">Name: </label>
-            <input type="text" name=”username” id="username">
-            <button id="join_leave">Join call</button>
-            <button id="share_screen" disabled>Share screen</button>
-            <button id="toggle_chat" disabled>Toggle chat</button>
-        </form>
-        <p id="count">Disconnected.</p>
-        <div id="root">
-            <div id="container" class="container">
-                <div id="local" class="participant"><div></div><div class="label">Me</div></div>
-                <!-- more participants will be added dynamically here -->
+        <div class="navbar navbar-expand-md" id="navbar">
+          <div class="container-fluid">
+            <form class="d-flex">
+              <input class="form-control me-2" type="text" id="camera_name" placeholder="Camera Name" aria-label="Camera Name">
+              <button class="btn btn-outline-primary" id="join" type="submit"><i class="fas fa-sign-in-alt"></i></button>
+            </form>
+            <div class="justify-content-end">
+              <button id="changeCamera" class="btn btn-secondary" hidden><i class="fas fa-sync-alt"></i></button>
+              <button id="mute_audio" class="btn btn-secondary" hidden><i class="fas fa-microphone"></i></button>
+              <button id="mute_video" class="btn btn-secondary" hidden><i class="fas fa-video"></i></button>
+              <button id="leave" class="btn btn-danger" hidden><i class="fas fa-sign-out-alt"></i></button>
             </div>
-            <div id="chat">
-                <div id="chat-scroll">
-                    <div id="chat-content">
-                        <!-- chat content will be added dynamically here -->
-                    </div>
-                </div>
-                <input id="chat-input" type="text">
-            </div>
+          </div>
         </div>
-        <script src="https://media.twiliocdn.com/sdk/js/video/releases/2.3.0/twilio-video.min.js"></script>
-        <script src="https://media.twiliocdn.com/sdk/js/conversations/releases/1.0.0/twilio-conversations.min.js"></script>
-        <script src="{{ url_for('static', filename='app.js') }}"></script>
+        <!-- The count is not displayed - but useful for debugging -->
+        <p id="count" hidden>Disconnected.</p>
+        <div id="participant-container">
+          <div id="local" class="participant"><div></div><div class="label participantLabel">Me</div></div>
+          <!-- more participants will be added dynamically here -->
+        </div>
+        <script src="https://media.twiliocdn.com/sdk/js/video/releases/2.18.1/twilio-video.min.js"></script>
+        <script type="module" src="{{ url_for('static', filename='app.js') }}"></script>
     </body>
 </html>

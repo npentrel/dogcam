@@ -1,68 +1,158 @@
+import { resizeVideos, zoomTrack } from './resize.js';
+
 const root = document.getElementById('root');
-const usernameInput = document.getElementById('username');
-const button = document.getElementById('join_leave');
-const shareScreen = document.getElementById('share_screen');
-const toggleChat = document.getElementById('toggle_chat');
-const container = document.getElementById('container');
+const camera_name_input = document.getElementById('camera_name');
+const join_button = document.getElementById('join');
+const leave_button = document.getElementById('leave');
+const audio_mute_button = document.getElementById('mute_audio');
+const video_mute_button = document.getElementById('mute_video');
+const change_camera_button = document.getElementById('changeCamera');
+const container = document.getElementById('participant-container');
+const navbar = document.getElementById('navbar');
 const count = document.getElementById('count');
-const chatScroll = document.getElementById('chat-scroll');
-const chatContent = document.getElementById('chat-content');
-const chatInput = document.getElementById('chat-input');
+const style = document.createElement('style');
+document.head.appendChild(style);
+
 let connected = false;
 let room;
-let chat;
-let conv;
-let screenTrack;
+let video_track;
+let audio_track;
+let data_track;
+let current_camera;
+let video;
 
-function addLocalVideo() {
-    Twilio.Video.createLocalVideoTrack().then(track => {
-        let video = document.getElementById('local').firstChild;
-        let trackElement = track.attach();
-        trackElement.addEventListener('click', () => { zoomTrack(trackElement); });
-        video.appendChild(trackElement);
+// add tracks
+
+function addLocalAudioTrack() {
+    Twilio.Video.createLocalAudioTrack().then(track => {
+        audio_track = track;
     });
 };
+
+function addLocalDataTrack() {
+    data_track = Twilio.Video.LocalDataTrack();
+};
+
+async function addLocalVideo(id) {
+    let options = {}
+    if(id){
+        options = { deviceId: new_video_device.deviceId };
+    }
+    await Twilio.Video.createLocalVideoTrack(options).then(track => {
+        video = document.getElementById('local').firstChild;
+        let trackElement = track.attach();
+        trackElement.addEventListener('click', () => { zoomTrack(trackElement, document, container, style); });
+        if (video.hasChildNodes()) {
+            video.removeChild(video.firstChild);
+        }
+        video.appendChild(trackElement);
+        video_track = track;
+
+        // enable change camera button if there are multiple video devices
+        let video_devices = navigator.mediaDevices.enumerateDevices().then(devices => {
+            video_devices = devices.filter(d => d.kind == 'videoinput');
+            if (video_devices.length > 1) {
+                change_camera_button.hidden = false;
+            }
+        });
+    });
+    return video_track;
+};
+
+// button handlers
 
 function connectButtonHandler(event) {
     event.preventDefault();
     if (!connected) {
-        let username = usernameInput.value;
-        if (!username) {
-            alert('Enter your name before connecting');
+        let camera_name = camera_name_input.value;
+        if (!camera_name) {
+            alert('Enter a camera name before connecting');
             return;
         }
-        button.disabled = true;
-        button.innerHTML = 'Connecting...';
-        connect(username).then(() => {
-            button.innerHTML = 'Leave call';
-            button.disabled = false;
-            shareScreen.disabled = false;
+
+        // add spinner
+        join_button.children[0].className = "spinner-border spinner-border-sm"
+        join_button.disabled = true;
+
+        connect(camera_name).then(() => {
+            // change navbar to joined view
+            camera_name_input.hidden = true;
+            join_button.children[0].className = 'fas fa-sign-in-alt';
+            join_button.hidden = true;
+            leave_button.hidden = false;
+            leave_button.disabled = false;
+            audio_mute_button.hidden = false;
+            video_mute_button.hidden = false;
         }).catch(() => {
             alert('Connection failed. Is the backend running?');
-            button.innerHTML = 'Join call';
-            button.disabled = false;
+            // reset navbar
+            join_button.disabled = false;
+            join_button.hidden = false;
+            join_button.children[0].className = 'fas fa-sign-in-alt';
         });
-    }
-    else {
+    } else {
         disconnect();
-        button.innerHTML = 'Join call';
+        camera_name_input.hidden = false;
+        join_button.disabled = false;
+        join_button.hidden = false;
+        leave_button.hidden = true;
+        leave_button.disabled = true;
+        audio_mute_button.hidden = true;
+        video_mute_button.hidden = true;
         connected = false;
-        shareScreen.innerHTML = 'Share screen';
-        shareScreen.disabled = true;
     }
 };
 
-function connect(username) {
+function audioButtonHandler(event) {
+    if (event) {
+       event.preventDefault();
+    }
+
+    // send sid to listeners so they know our audio state
+    data_track.send(room.localParticipant.sid);
+
+    room.localParticipant.audioTracks.forEach(publication => {
+        if (publication.isTrackEnabled) {
+            publication.track.disable()
+            audio_mute_button.firstChild.className = 'fas fa-microphone-slash';
+        } else {
+            publication.track.enable()
+            audio_mute_button.firstChild.className = 'fas fa-microphone';
+        }
+    });
+
+}
+
+function videoButtonHandler(event) {
+    event.preventDefault();
+
+    room.localParticipant.videoTracks.forEach(publication => {
+        if (publication.isTrackEnabled) {
+            publication.track.disable();
+            video_mute_button.firstChild.className = 'fas fa-video-slash';
+            document.getElementById('local').hidden = true;
+        } else {
+            publication.track.enable()
+            video_mute_button.firstChild.className = 'fas fa-video';
+            document.getElementById('local').hidden = false;
+        }
+    });
+    resizeVideosHelper();
+}
+
+// connect to Twilio Video
+
+function connect(camera_name) {
     let promise = new Promise((resolve, reject) => {
         // get a token from the back end
         let data;
         fetch('/login', {
             method: 'POST',
-            body: JSON.stringify({'username': username})
+            body: JSON.stringify({'camera_name': camera_name})
         }).then(res => res.json()).then(_data => {
             // join video call
             data = _data;
-            return Twilio.Video.connect(data.token);
+            return Twilio.Video.connect(data.token, {tracks: [video_track, audio_track, data_track]});
         }).then(_room => {
             room = _room;
             room.participants.forEach(participantConnected);
@@ -70,7 +160,6 @@ function connect(username) {
             room.on('participantDisconnected', participantDisconnected);
             connected = true;
             updateParticipantCount();
-            connectChat(data.token, data.conversation_sid);
             resolve();
         }).catch(e => {
             console.log(e);
@@ -80,12 +169,6 @@ function connect(username) {
     return promise;
 };
 
-function updateParticipantCount() {
-    if (!connected)
-        count.innerHTML = 'Disconnected.';
-    else
-        count.innerHTML = (room.participants.size + 1) + ' participants online.';
-};
 
 function participantConnected(participant) {
     let participantDiv = document.createElement('div');
@@ -96,165 +179,147 @@ function participantConnected(participant) {
     participantDiv.appendChild(tracksDiv);
 
     let labelDiv = document.createElement('div');
-    labelDiv.setAttribute('class', 'label');
+    labelDiv.setAttribute('class', 'label participantLabel');
     labelDiv.innerHTML = participant.identity;
     participantDiv.appendChild(labelDiv);
+
+    let muteAudioButton = document.createElement('button');
+    muteAudioButton.setAttribute('class', 'muteParticipantAudio label');
+    muteAudioButton.innerHTML = '<i class="fas fa-microphone"></i>';
+    muteAudioButton.addEventListener('click', () => {
+        data_track.send(participant.sid);
+    });
+    participantDiv.appendChild(muteAudioButton);
 
     container.appendChild(participantDiv);
 
     participant.tracks.forEach(publication => {
-        if (publication.isSubscribed)
+        if (publication.isSubscribed) {
             trackSubscribed(tracksDiv, publication.track);
+            handleTrackDisabled(publication.track, participantDiv);
+        }
+        publication.on('subscribed', track => handleTrackDisabled(track, participantDiv));
     });
     participant.on('trackSubscribed', track => trackSubscribed(tracksDiv, track));
     participant.on('trackUnsubscribed', trackUnsubscribed);
 
     updateParticipantCount();
+    resizeVideosHelper();
 };
 
 function participantDisconnected(participant) {
     document.getElementById(participant.sid).remove();
     updateParticipantCount();
+    resizeVideosHelper();
 };
 
+
+
+const receiveMuteInstructions = (sid) => {
+    if (sid == room.localParticipant.sid) {
+        audioButtonHandler();
+    } else {
+        participant = document.getElementById(sid);
+        if (participant.lastChild.innerHTML == '<i class="fas fa-microphone"></i>') {
+            participant.lastChild.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+        } else {
+            participant.lastChild .innerHTML = '<i class="fas fa-microphone"></i>';
+        }
+    }
+}
+
 function trackSubscribed(div, track) {
-    let trackElement = track.attach();
-    trackElement.addEventListener('click', () => { zoomTrack(trackElement); });
-    div.appendChild(trackElement);
+    if (track.kind === 'data') {
+        track.on('message', data => receiveMuteInstructions(data));
+    } else {
+        let trackElement = track.attach();
+        trackElement.addEventListener('click', () => { zoomTrack(trackElement, document, container, style); });
+        div.appendChild(trackElement);
+    }
 };
 
 function trackUnsubscribed(track) {
-    track.detach().forEach(element => {
-        if (element.classList.contains('participantZoomed')) {
-            zoomTrack(element);
-        }
-        element.remove()
-    });
+    if (track.kind == 'video') {
+        track.detach().forEach(element => {
+            if (element.classList.contains('participantZoomed')) {
+                zoomTrack(element, document, container, style);
+            }
+            element.remove()
+        });
+    }
 };
 
 function disconnect() {
     room.disconnect();
-    if (chat) {
-        chat.shutdown().then(() => {
-            conv = null;
-            chat = null;
-        });
-    }
     while (container.lastChild.id != 'local')
         container.removeChild(container.lastChild);
-    button.innerHTML = 'Join call';
-    if (root.classList.contains('withChat')) {
-        root.classList.remove('withChat');
-    }
-    toggleChat.disabled = true;
     connected = false;
     updateParticipantCount();
+    resizeVideosHelper();
 };
 
-function shareScreenHandler() {
-    event.preventDefault();
-    if (!screenTrack) {
-        navigator.mediaDevices.getDisplayMedia().then(stream => {
-            screenTrack = new Twilio.Video.LocalVideoTrack(stream.getTracks()[0]);
-            room.localParticipant.publishTrack(screenTrack);
-            screenTrack.mediaStreamTrack.onended = () => { shareScreenHandler() };
-            console.log(screenTrack);
-            shareScreen.innerHTML = 'Stop sharing';
-        }).catch(() => {
-            alert('Could not share the screen.')
-        });
-    }
-    else {
-        room.localParticipant.unpublishTrack(screenTrack);
-        screenTrack.stop();
-        screenTrack = null;
-        shareScreen.innerHTML = 'Share screen';
-    }
+function updateParticipantCount() {
+    if (!connected)
+        count.innerHTML = 'Disconnected.';
+    else
+        count.innerHTML = (room.participants.size + 1) + ' participants online.';
 };
 
-function zoomTrack(trackElement) {
-    if (!trackElement.classList.contains('trackZoomed')) {
-        // zoom in
-        container.childNodes.forEach(participant => {
-            if (participant.classList && participant.classList.contains('participant')) {
-                let zoomed = false;
-                participant.childNodes[0].childNodes.forEach(track => {
-                    if (track === trackElement) {
-                        track.classList.add('trackZoomed')
-                        zoomed = true;
-                    }
-                });
-                if (zoomed) {
-                    participant.classList.add('participantZoomed');
-                }
-                else {
-                    participant.classList.add('participantHidden');
-                }
-            }
-        });
-    }
-    else {
-        // zoom out
-        container.childNodes.forEach(participant => {
-            if (participant.classList && participant.classList.contains('participant')) {
-                participant.childNodes[0].childNodes.forEach(track => {
-                    if (track === trackElement) {
-                        track.classList.remove('trackZoomed');
-                    }
-                });
-                participant.classList.remove('participantZoomed')
-                participant.classList.remove('participantHidden')
-            }
-        });
-    }
-};
-
-function connectChat(token, conversationSid) {
-    return Twilio.Conversations.Client.create(token).then(_chat => {
-        chat = _chat;
-        return chat.getConversationBySid(conversationSid).then((_conv) => {
-            conv = _conv;
-            conv.on('messageAdded', (message) => {
-                addMessageToChat(message.author, message.body);
-            });
-            return conv.getMessages().then((messages) => {
-                chatContent.innerHTML = '';
-                for (let i = 0; i < messages.items.length; i++) {
-                    addMessageToChat(messages.items[i].author, messages.items[i].body);
-                }
-                toggleChat.disabled = false;
-            });
-        });
-    }).catch(e => {
-        console.log(e);
+function handleTrackDisabled(track, participantDiv) {
+    track.on('disabled', () => {
+        /* Hide the associated <video> element. */
+        if (track.kind == 'video') {
+            participantDiv.hidden = true;
+            resizeVideosHelper();
+        }
     });
-};
-
-function addMessageToChat(user, message) {
-    chatContent.innerHTML += `<p><b>${user}</b>: ${message}`;
-    chatScroll.scrollTop = chatScroll.scrollHeight;
+    track.on('enabled', () => {
+        /* Hide the associated <video> element. */
+        if (track.kind == 'video') {
+            participantDiv.hidden = false;
+            resizeVideosHelper();
+        }
+    });
 }
 
-function toggleChatHandler() {
-    event.preventDefault();
-    if (root.classList.contains('withChat')) {
-        root.classList.remove('withChat');
-    }
-    else {
-        root.classList.add('withChat');
-        chatScroll.scrollTop = chatScroll.scrollHeight;
-    }
-};
 
-function onChatInputKey(ev) {
-    if (ev.keyCode == 13) {
-        conv.sendMessage(chatInput.value);
-        chatInput.value = '';
+async function changeCameraHandler(event) {
+    event.preventDefault();
+
+    if (current_camera == null) {
+        current_camera = video_track.mediaStreamTrack.label;
     }
-};
+
+    video_devices = await navigator.mediaDevices.enumerateDevices();
+    video_devices = video_devices.filter(d => d.kind == 'videoinput');
+
+    new_video_device = null;
+    for (i = 0; i < video_devices.length; i++) {
+        if (video_devices[i].label == current_camera) {
+            new_video_device = video_devices[(i+1)%video_devices.length];
+        }
+    }
+    if (room) {
+        room.localParticipant.unpublishTrack(video_track);
+    }
+    video_track = await addLocalVideo(new_video_device.deviceId);
+    if (room) {
+        room.localParticipant.publishTrack(video_track);
+    }
+
+    current_camera = new_video_device.label;
+}
+
+function resizeVideosHelper() {
+    resizeVideos(document, container, style);
+}
 
 addLocalVideo();
-button.addEventListener('click', connectButtonHandler);
-shareScreen.addEventListener('click', shareScreenHandler);
-toggleChat.addEventListener('click', toggleChatHandler);
-chatInput.addEventListener('keyup', onChatInputKey);
+addLocalAudioTrack();
+addLocalDataTrack();
+join_button.addEventListener('click', connectButtonHandler);
+leave_button.addEventListener('click', connectButtonHandler);
+audio_mute_button.addEventListener('click', audioButtonHandler);
+video_mute_button.addEventListener('click', videoButtonHandler);
+change_camera_button.addEventListener('click', changeCameraHandler);
+window.addEventListener('resize', resizeVideosHelper, true);
