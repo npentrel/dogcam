@@ -39,8 +39,10 @@ export function resizeVideos(document, container, style) {
     let video_participants = participants_arr.filter(e => !e.hidden && !e.classList.contains("participantHidden")).length;
 
     let participant_width = calcHeight(container_width, container_height, video_participants);
-    style.innerHTML = "video { width: " + participant_width + "px; height: " + participant_width * 3/4 + "px; }";
+    style.innerHTML = ".video-container { width: " + participant_width + "px; height: " + participant_width * 3/4 + "px; } .deg90 { width: " + participant_width * 3/4 + "px; height: " + participant_width + "px; } .deg270 { width: " + participant_width * 3/4 + "px; height: " + participant_width + "px; }";
 }
+
+
 
 export function zoomTrack(trackElement, document, container, style) {
     if (!trackElement.classList.contains('trackZoomed')) {
@@ -79,3 +81,26 @@ export function zoomTrack(trackElement, document, container, style) {
     }
     resizeVideos(document, container, style);
 };
+
+export function rotateVideo(v) {
+    let zoomed = false;
+    if (v.classList.contains("trackZoomed")) {
+        zoomed = true;
+    }
+    if (v.classList.contains("deg0")) {
+        v.className = "deg270";
+    } else {
+        if (v.classList.contains("deg270")) {
+            v.className = "deg180";
+        } else {
+            if (v.classList.contains("deg180")) {
+                v.className = "deg90";
+            } else {
+                v.className = "deg0";
+            }
+        }
+    }
+    if (zoomed) {
+        v.className += " trackZoomed";
+    }
+}

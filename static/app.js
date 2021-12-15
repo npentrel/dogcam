@@ -1,4 +1,4 @@
-import { resizeVideos, zoomTrack } from './resize.js';
+import { resizeVideos, zoomTrack, rotateVideo } from './resize.js';
 
 const root = document.getElementById('root');
 const camera_name_input = document.getElementById('camera_name');
@@ -7,6 +7,7 @@ const leave_button = document.getElementById('leave');
 const audio_mute_button = document.getElementById('mute_audio');
 const video_mute_button = document.getElementById('mute_video');
 const change_camera_button = document.getElementById('changeCamera');
+const rotate_video_button = document.getElementById('rotateVideo');
 const container = document.getElementById('participant-container');
 const navbar = document.getElementById('navbar');
 const count = document.getElementById('count');
@@ -39,12 +40,12 @@ async function addLocalVideo(id) {
         options = { deviceId: new_video_device.deviceId };
     }
     await Twilio.Video.createLocalVideoTrack(options).then(track => {
-        video = document.getElementById('local').firstChild;
         let trackElement = track.attach();
         trackElement.addEventListener('click', () => { zoomTrack(trackElement, document, container, style); });
         if (video.hasChildNodes()) {
             video.removeChild(video.firstChild);
         }
+        trackElement.className = "deg0";
         video.appendChild(trackElement);
         video_track = track;
 
@@ -176,12 +177,22 @@ function participantConnected(participant) {
     participantDiv.setAttribute('class', 'participant');
 
     let tracksDiv = document.createElement('div');
+    tracksDiv.setAttribute('class', 'video-container');
     participantDiv.appendChild(tracksDiv);
 
     let labelDiv = document.createElement('div');
     labelDiv.setAttribute('class', 'label participantLabel');
     labelDiv.innerHTML = participant.identity;
     participantDiv.appendChild(labelDiv);
+
+    let rotateButton = document.createElement('button');
+    rotateButton.setAttribute('class', 'rotateVideo label');
+    rotateButton.innerHTML = '<i class="fas fa-undo"></i>';
+    rotateButton.addEventListener('click', () => {
+        let v = participantDiv.firstElementChild.getElementsByTagName("video")[0];
+        rotateVideo(v);
+    });
+    participantDiv.appendChild(rotateButton);
 
     let muteAudioButton = document.createElement('button');
     muteAudioButton.setAttribute('class', 'muteParticipantAudio label');
@@ -233,6 +244,9 @@ function trackSubscribed(div, track) {
         track.on('message', data => receiveMuteInstructions(data));
     } else {
         let trackElement = track.attach();
+        if (track.kind === 'video') {
+            trackElement.className = "deg0";
+        }
         trackElement.addEventListener('click', () => { zoomTrack(trackElement, document, container, style); });
         div.appendChild(trackElement);
     }
@@ -314,6 +328,11 @@ function resizeVideosHelper() {
     resizeVideos(document, container, style);
 }
 
+function rotateLocalVideo(v) {
+    rotateVideo(document.getElementById('local').firstElementChild.getElementsByTagName("video")[0]);
+}
+
+
 addLocalVideo();
 addLocalAudioTrack();
 addLocalDataTrack();
@@ -322,4 +341,5 @@ leave_button.addEventListener('click', connectButtonHandler);
 audio_mute_button.addEventListener('click', audioButtonHandler);
 video_mute_button.addEventListener('click', videoButtonHandler);
 change_camera_button.addEventListener('click', changeCameraHandler);
+rotate_video_button.addEventListener('click', rotateLocalVideo);
 window.addEventListener('resize', resizeVideosHelper, true);

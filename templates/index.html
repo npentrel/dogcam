@@ -21,6 +21,7 @@
             </form>
             <div class="justify-content-end">
               <button id="changeCamera" class="btn btn-secondary" hidden><i class="fas fa-sync-alt"></i></button>
+              <button id="rotateVideo" class="btn btn-secondary"><i class="fas fa-undo"></i></button>
               <button id="mute_audio" class="btn btn-secondary" hidden><i class="fas fa-microphone"></i></button>
               <button id="mute_video" class="btn btn-secondary" hidden><i class="fas fa-video"></i></button>
               <button id="leave" class="btn btn-danger" hidden><i class="fas fa-sign-out-alt"></i></button>
@@ -30,7 +31,7 @@
         <!-- The count is not displayed - but useful for debugging -->
         <p id="count" hidden>Disconnected.</p>
         <div id="participant-container">
-          <div id="local" class="participant"><div></div><div class="label participantLabel">Me</div></div>
+          <div id="local" class="participant"><div class="video-container"></div><div class="label participantLabel">Me</div></div>
           <!-- more participants will be added dynamically here -->
         </div>
         <script src="https://media.twiliocdn.com/sdk/js/video/releases/2.18.1/twilio-video.min.js"></script>

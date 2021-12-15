@@ -19,22 +19,22 @@ html, body {
     position: relative;
 }
 
-.participant > div:not(.label) {
+.video-container {
     display: inline-flex;
+    place-content: center;
+    border: 1px solid #6c757d;
+    border-radius: 0.25rem;
+    aspect-ratio: 4 / 3;
 }
 
 video {
     z-index: 0;
-    border: 1px solid #6c757d;
-    border-radius: 0.25rem;
-    aspect-ratio: 4 / 3;
     object-fit: contain;
 }
 
 .label {
     z-index: 1;
     position: absolute;
-    right: 0;
     padding-left: 0.5em;
     padding-right: 0.5em;
     padding-top: 0.25em;
@@ -48,10 +48,39 @@ video {
 
 .participantLabel {
     bottom: 0;
+    right: 0;
 }
 
-.muteParticipantAudioLabel {
+.muteParticipantAudio {
     top: 0;
+    right: 0;
+}
+
+.rotateVideo {
+    top: 0;
+    left: 0;
+}
+
+.deg0 {
+    transform: rotate(0deg);
+    transform-origin: center center;
+}
+
+.deg90 {
+    transform: rotate(90deg);
+    transform-origin: center center;
+    margin-top: -12.5%;
+}
+
+.deg180 {
+    transform: rotate(180deg);
+    transform-origin: center center;
+}
+
+.deg270 {
+    transform: rotate(270deg);
+    transform-origin: center center;
+    margin-top: -12.5%;
 }
 
 .participantHidden {
