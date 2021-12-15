@@ -41,7 +41,7 @@ def login():
 
     # if you would like to add more than 2 participants/cameras comment the
     # next line to create a paid room
-    find_or_create_room(room_name)
+    # find_or_create_room(room_name)
 
     token = AccessToken(
         twilio_account_sid,

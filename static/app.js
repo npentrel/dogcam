@@ -9,7 +9,6 @@ const video_mute_button = document.getElementById('mute_video');
 const change_camera_button = document.getElementById('changeCamera');
 const rotate_video_button = document.getElementById('rotateVideo');
 const container = document.getElementById('participant-container');
-const navbar = document.getElementById('navbar');
 const count = document.getElementById('count');
 const style = document.createElement('style');
 document.head.appendChild(style);
@@ -37,8 +36,9 @@ function addLocalDataTrack() {
 async function addLocalVideo(id) {
     let options = {}
     if(id){
-        options = { deviceId: new_video_device.deviceId };
+        options = { deviceId: id };
     }
+    video = document.getElementById('local').firstChild;
     await Twilio.Video.createLocalVideoTrack(options).then(track => {
         let trackElement = track.attach();
         trackElement.addEventListener('click', () => { zoomTrack(trackElement, document, container, style); });
@@ -206,31 +206,32 @@ function participantConnected(participant) {
 
     participant.tracks.forEach(publication => {
         if (publication.isSubscribed) {
-            trackSubscribed(tracksDiv, publication.track);
-            handleTrackDisabled(publication.track, participantDiv);
+            trackSubscribed(tracksDiv, publication.track, participantDiv);
         }
         publication.on('subscribed', track => handleTrackDisabled(track, participantDiv));
     });
-    participant.on('trackSubscribed', track => trackSubscribed(tracksDiv, track));
-    participant.on('trackUnsubscribed', trackUnsubscribed);
+    participant.on('trackSubscribed', track => trackSubscribed(tracksDiv, track, participantDiv));
+    participant.on('trackUnsubscribed', track => trackUnsubscribed(track, participantDiv));
 
     updateParticipantCount();
     resizeVideosHelper();
 };
 
 function participantDisconnected(participant) {
-    document.getElementById(participant.sid).remove();
+    let p = document.getElementById(participant.sid);
+    if (p.classList.contains("participantZoomed")) {
+        zoomOut(document, container, style)
+    }
+    p.remove();
     updateParticipantCount();
     resizeVideosHelper();
 };
-
-
 
 const receiveMuteInstructions = (sid) => {
     if (sid == room.localParticipant.sid) {
         audioButtonHandler();
     } else {
-        participant = document.getElementById(sid);
+        let participant = document.getElementById(sid);
         if (participant.lastChild.innerHTML == '<i class="fas fa-microphone"></i>') {
             participant.lastChild.innerHTML = '<i class="fas fa-microphone-slash"></i>';
         } else {
@@ -239,7 +240,7 @@ const receiveMuteInstructions = (sid) => {
     }
 }
 
-function trackSubscribed(div, track) {
+function trackSubscribed(div, track, participantDiv) {
     if (track.kind === 'data') {
         track.on('message', data => receiveMuteInstructions(data));
     } else {
@@ -250,14 +251,15 @@ function trackSubscribed(div, track) {
         trackElement.addEventListener('click', () => { zoomTrack(trackElement, document, container, style); });
         div.appendChild(trackElement);
     }
+    handleTrackDisabled(track, participantDiv);
 };
 
-function trackUnsubscribed(track) {
+function trackUnsubscribed(track, participantDiv) {
     if (track.kind == 'video') {
+        if (participantDiv.classList.contains('participantZoomed')) {
+            zoomOut(document, container, style);
+        }
         track.detach().forEach(element => {
-            if (element.classList.contains('participantZoomed')) {
-                zoomTrack(element, document, container, style);
-            }
             element.remove()
         });
     }
@@ -267,6 +269,8 @@ function disconnect() {
     room.disconnect();
     while (container.lastChild.id != 'local')
         container.removeChild(container.lastChild);
+    // in case the participant was hidden this resets it.
+    container.lastChild.className = "participant";
     connected = false;
     updateParticipantCount();
     resizeVideosHelper();
@@ -304,11 +308,11 @@ async function changeCameraHandler(event) {
         current_camera = video_track.mediaStreamTrack.label;
     }
 
-    video_devices = await navigator.mediaDevices.enumerateDevices();
+    let video_devices = await navigator.mediaDevices.enumerateDevices();
     video_devices = video_devices.filter(d => d.kind == 'videoinput');
 
-    new_video_device = null;
-    for (i = 0; i < video_devices.length; i++) {
+    let new_video_device = null;
+    for (let i = 0; i < video_devices.length; i++) {
         if (video_devices[i].label == current_camera) {
             new_video_device = video_devices[(i+1)%video_devices.length];
         }

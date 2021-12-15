@@ -42,7 +42,20 @@ export function resizeVideos(document, container, style) {
     style.innerHTML = ".video-container { width: " + participant_width + "px; height: " + participant_width * 3/4 + "px; } .deg90 { width: " + participant_width * 3/4 + "px; height: " + participant_width + "px; } .deg270 { width: " + participant_width * 3/4 + "px; height: " + participant_width + "px; }";
 }
 
-
+export function zoomOut(document, container, style) {
+    container.childNodes.forEach(participant => {
+        if (participant.classList && participant.classList.contains('participant')) {
+            participant.childNodes[0].childNodes.forEach(track => {
+                if (track.classList.contains('trackZoomed')) {
+                    track.classList.remove('trackZoomed');
+                }
+            });
+            participant.classList.remove('participantZoomed')
+            participant.classList.remove('participantHidden')
+        }
+    });
+    resizeVideos(document, container, style);
+}
 
 export function zoomTrack(trackElement, document, container, style) {
     if (!trackElement.classList.contains('trackZoomed')) {
@@ -64,22 +77,12 @@ export function zoomTrack(trackElement, document, container, style) {
                 }
             }
         });
+        resizeVideos(document, container, style);
     }
     else {
         // zoom out
-        container.childNodes.forEach(participant => {
-            if (participant.classList && participant.classList.contains('participant')) {
-                participant.childNodes[0].childNodes.forEach(track => {
-                    if (track === trackElement) {
-                        track.classList.remove('trackZoomed');
-                    }
-                });
-                participant.classList.remove('participantZoomed')
-                participant.classList.remove('participantHidden')
-            }
-        });
+        zoomOut(document, container, style);
     }
-    resizeVideos(document, container, style);
 };
 
 export function rotateVideo(v) {
