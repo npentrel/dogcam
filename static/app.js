@@ -60,87 +60,6 @@ async function addLocalVideo(id) {
     return video_track;
 };
 
-// button handlers
-
-function connectButtonHandler(event) {
-    event.preventDefault();
-    if (!connected) {
-        let camera_name = camera_name_input.value;
-        if (!camera_name) {
-            alert('Enter a camera name before connecting');
-            return;
-        }
-
-        // add spinner
-        join_button.children[0].className = "spinner-border spinner-border-sm"
-        join_button.disabled = true;
-
-        connect(camera_name).then(() => {
-            // change navbar to joined view
-            camera_name_input.hidden = true;
-            join_button.children[0].className = 'fas fa-sign-in-alt';
-            join_button.hidden = true;
-            leave_button.hidden = false;
-            leave_button.disabled = false;
-            audio_mute_button.hidden = false;
-            video_mute_button.hidden = false;
-        }).catch(() => {
-            alert('Connection failed. Is the backend running?');
-            // reset navbar
-            join_button.disabled = false;
-            join_button.hidden = false;
-            join_button.children[0].className = 'fas fa-sign-in-alt';
-        });
-    } else {
-        disconnect();
-        camera_name_input.hidden = false;
-        join_button.disabled = false;
-        join_button.hidden = false;
-        leave_button.hidden = true;
-        leave_button.disabled = true;
-        audio_mute_button.hidden = true;
-        video_mute_button.hidden = true;
-        connected = false;
-    }
-};
-
-function audioButtonHandler(event) {
-    if (event) {
-       event.preventDefault();
-    }
-
-    // send sid to listeners so they know our audio state
-    data_track.send(room.localParticipant.sid);
-
-    room.localParticipant.audioTracks.forEach(publication => {
-        if (publication.isTrackEnabled) {
-            publication.track.disable()
-            audio_mute_button.firstChild.className = 'fas fa-microphone-slash';
-        } else {
-            publication.track.enable()
-            audio_mute_button.firstChild.className = 'fas fa-microphone';
-        }
-    });
-
-}
-
-function videoButtonHandler(event) {
-    event.preventDefault();
-
-    room.localParticipant.videoTracks.forEach(publication => {
-        if (publication.isTrackEnabled) {
-            publication.track.disable();
-            video_mute_button.firstChild.className = 'fas fa-video-slash';
-            document.getElementById('local').hidden = true;
-        } else {
-            publication.track.enable()
-            video_mute_button.firstChild.className = 'fas fa-video';
-            document.getElementById('local').hidden = false;
-        }
-    });
-    resizeVideosHelper();
-}
-
 // connect to Twilio Video
 
 function connect(camera_name) {
@@ -227,19 +146,6 @@ function participantDisconnected(participant) {
     resizeVideosHelper();
 };
 
-const receiveMuteInstructions = (sid) => {
-    if (sid == room.localParticipant.sid) {
-        audioButtonHandler();
-    } else {
-        let participant = document.getElementById(sid);
-        if (participant.lastChild.innerHTML == '<i class="fas fa-microphone"></i>') {
-            participant.lastChild.innerHTML = '<i class="fas fa-microphone-slash"></i>';
-        } else {
-            participant.lastChild .innerHTML = '<i class="fas fa-microphone"></i>';
-        }
-    }
-}
-
 function trackSubscribed(div, track, participantDiv) {
     if (track.kind === 'data') {
         track.on('message', data => receiveMuteInstructions(data));
@@ -276,6 +182,101 @@ function disconnect() {
     resizeVideosHelper();
 };
 
+// button handlers
+
+function connectButtonHandler(event) {
+    event.preventDefault();
+    if (!connected) {
+        let camera_name = camera_name_input.value;
+        if (!camera_name) {
+            alert('Enter a camera name before connecting');
+            return;
+        }
+
+        // add spinner
+        join_button.children[0].className = "spinner-border spinner-border-sm"
+        join_button.disabled = true;
+
+        connect(camera_name).then(() => {
+            // change navbar to joined view
+            camera_name_input.hidden = true;
+            join_button.children[0].className = 'fas fa-sign-in-alt';
+            join_button.hidden = true;
+            leave_button.hidden = false;
+            leave_button.disabled = false;
+            audio_mute_button.hidden = false;
+            video_mute_button.hidden = false;
+        }).catch(() => {
+            alert('Connection failed. Is the backend running?');
+            // reset navbar
+            join_button.disabled = false;
+            join_button.hidden = false;
+            join_button.children[0].className = 'fas fa-sign-in-alt';
+        });
+    } else {
+        disconnect();
+        camera_name_input.hidden = false;
+        join_button.disabled = false;
+        join_button.hidden = false;
+        leave_button.hidden = true;
+        leave_button.disabled = true;
+        audio_mute_button.hidden = true;
+        video_mute_button.hidden = true;
+        connected = false;
+    }
+};
+
+function audioButtonHandler(event) {
+    if (event) {
+       event.preventDefault();
+    }
+
+    // send sid to listeners so they know our audio state
+    data_track.send(room.localParticipant.sid);
+
+    room.localParticipant.audioTracks.forEach(publication => {
+        if (publication.isTrackEnabled) {
+            publication.track.disable()
+            audio_mute_button.firstChild.className = 'fas fa-microphone-slash';
+        } else {
+            publication.track.enable()
+            audio_mute_button.firstChild.className = 'fas fa-microphone';
+        }
+    });
+
+}
+
+function videoButtonHandler(event) {
+    event.preventDefault();
+
+    room.localParticipant.videoTracks.forEach(publication => {
+        if (publication.isTrackEnabled) {
+            publication.track.disable();
+            video_mute_button.firstChild.className = 'fas fa-video-slash';
+            document.getElementById('local').hidden = true;
+        } else {
+            publication.track.enable()
+            video_mute_button.firstChild.className = 'fas fa-video';
+            document.getElementById('local').hidden = false;
+        }
+    });
+    resizeVideosHelper();
+}
+
+
+const receiveMuteInstructions = (sid) => {
+    if (sid == room.localParticipant.sid) {
+        audioButtonHandler();
+    } else {
+        let participant = document.getElementById(sid);
+        if (participant.lastChild.innerHTML == '<i class="fas fa-microphone"></i>') {
+            participant.lastChild.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+        } else {
+            participant.lastChild .innerHTML = '<i class="fas fa-microphone"></i>';
+        }
+    }
+}
+
 function updateParticipantCount() {
     if (!connected)
         count.innerHTML = 'Disconnected.';
@@ -299,7 +300,6 @@ function handleTrackDisabled(track, participantDiv) {
         }
     });
 }
-
 
 async function changeCameraHandler(event) {
     event.preventDefault();
