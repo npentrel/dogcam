@@ -20,6 +20,7 @@ let audio_track;
 let data_track;
 let current_camera;
 let video;
+let muted = false;
 
 // add tracks
 
@@ -117,7 +118,11 @@ function participantConnected(participant) {
     muteAudioButton.setAttribute('class', 'muteParticipantAudio label');
     muteAudioButton.innerHTML = '<i class="fas fa-microphone"></i>';
     muteAudioButton.addEventListener('click', () => {
-        data_track.send(participant.sid);
+        if (muteAudioButton.innerHTML == '<i class="fas fa-microphone"></i>') {
+            data_track.send("mute " + participant.sid);
+        } else {
+            data_track.send("unmute " + participant.sid);
+        }
     });
     participantDiv.appendChild(muteAudioButton);
 
@@ -149,6 +154,7 @@ function participantDisconnected(participant) {
 function trackSubscribed(div, track, participantDiv) {
     if (track.kind === 'data') {
         track.on('message', data => receiveMuteInstructions(data));
+        data_track.send('state');
     } else {
         let trackElement = track.attach();
         if (track.kind === 'video') {
@@ -231,18 +237,24 @@ function audioButtonHandler(event) {
        event.preventDefault();
     }
 
-    // send sid to listeners so they know our audio state
-    data_track.send(room.localParticipant.sid);
-
     room.localParticipant.audioTracks.forEach(publication => {
         if (publication.isTrackEnabled) {
             publication.track.disable()
             audio_mute_button.firstChild.className = 'fas fa-microphone-slash';
+            muted = true;
         } else {
             publication.track.enable()
             audio_mute_button.firstChild.className = 'fas fa-microphone';
+            muted = false;
         }
     });
+
+    // send sid and action to listeners so they know our audio state
+    if (muted) {
+        data_track.send("mute " + room.localParticipant.sid);
+    } else {
+        data_track.send("unmute " + room.localParticipant.sid);
+    }
 
 }
 
@@ -264,17 +276,28 @@ function videoButtonHandler(event) {
 }
 
 
-const receiveMuteInstructions = (sid) => {
-    if (sid == room.localParticipant.sid) {
-        audioButtonHandler();
+const receiveMuteInstructions = (data) => {
+    let action;
+    let sid;
+    [action, sid] = data.split(" ");
+
+    if (action == "state") {
+        if (muted) {
+            data_track.send("mute " + room.localParticipant.sid);
+        }
     } else {
-        let participant = document.getElementById(sid);
-        if (participant.lastChild.innerHTML == '<i class="fas fa-microphone"></i>') {
-            participant.lastChild.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+        if (sid == room.localParticipant.sid) {
+            audioButtonHandler();
         } else {
-            participant.lastChild .innerHTML = '<i class="fas fa-microphone"></i>';
+            let participant = document.getElementById(sid);
+            if (action == "mute") {
+                participant.lastChild.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+            } else {
+                participant.lastChild.innerHTML = '<i class="fas fa-microphone"></i>';
+            }
         }
     }
+
 }
 
 function updateParticipantCount() {
