@@ -19,6 +19,9 @@ app = Flask(__name__)
 room_name = 'Dog Cam'
 
 
+# if you would like to add more than 2 participants/cameras set the room type
+# to "peer-to-peer" or "group"
+
 def find_or_create_room(room_name):
     try:
         # try to fetch an in-progress room with room_name
@@ -39,8 +42,6 @@ def login():
     if not camera_name:
         abort(401)
 
-    # if you would like to add more than 2 participants/cameras comment the
-    # next line to create a paid room
     # find_or_create_room(room_name)
 
     token = AccessToken(

@@ -1,6 +1,5 @@
 import { resizeVideos, zoomTrack, rotateVideo } from './resize.js';
 
-const root = document.getElementById('root');
 const camera_name_input = document.getElementById('camera_name');
 const join_button = document.getElementById('join');
 const leave_button = document.getElementById('leave');
@@ -154,7 +153,7 @@ function participantDisconnected(participant) {
 function trackSubscribed(div, track, participantDiv) {
     if (track.kind === 'data') {
         track.on('message', data => receiveMuteInstructions(data));
-        data_track.send('state');
+        data_track.send('sendState');
     } else {
         let trackElement = track.attach();
         if (track.kind === 'video') {
@@ -281,7 +280,7 @@ const receiveMuteInstructions = (data) => {
     let sid;
     [action, sid] = data.split(" ");
 
-    if (action == "state") {
+    if (action == "sendState") {
         if (muted) {
             data_track.send("mute " + room.localParticipant.sid);
         }
@@ -359,10 +358,10 @@ function rotateLocalVideo(v) {
     rotateVideo(document.getElementById('local').firstElementChild.getElementsByTagName("video")[0]);
 }
 
-
 addLocalVideo();
 addLocalAudioTrack();
 addLocalDataTrack();
+
 join_button.addEventListener('click', connectButtonHandler);
 leave_button.addEventListener('click', connectButtonHandler);
 audio_mute_button.addEventListener('click', audioButtonHandler);
