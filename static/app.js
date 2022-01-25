@@ -1,15 +1,15 @@
-import { resizeVideos, zoomTrack, rotateVideo } from './resize.js';
+import { resizeVideos, zoomTrack, rotateVideo } from "./resize.js";
 
-const camera_name_input = document.getElementById('camera_name');
-const join_button = document.getElementById('join');
-const leave_button = document.getElementById('leave');
-const audio_mute_button = document.getElementById('mute_audio');
-const video_mute_button = document.getElementById('mute_video');
-const change_camera_button = document.getElementById('changeCamera');
-const rotate_video_button = document.getElementById('rotateVideo');
-const container = document.getElementById('participant-container');
-const count = document.getElementById('count');
-const style = document.createElement('style');
+const camera_name_input = document.getElementById("camera_name");
+const join_button = document.getElementById("join");
+const leave_button = document.getElementById("leave");
+const audio_mute_button = document.getElementById("mute_audio");
+const video_mute_button = document.getElementById("mute_video");
+const change_camera_button = document.getElementById("changeCamera");
+const rotate_video_button = document.getElementById("rotateVideo");
+const container = document.getElementById("participant-container");
+const count = document.getElementById("count");
+const style = document.createElement("style");
 document.head.appendChild(style);
 
 let connected = false;
@@ -38,10 +38,10 @@ async function addLocalVideo(id) {
     if(id){
         options = { deviceId: id };
     }
-    video = document.getElementById('local').firstChild;
+    video = document.getElementById("local").firstChild;
     await Twilio.Video.createLocalVideoTrack(options).then(track => {
         let trackElement = track.attach();
-        trackElement.addEventListener('click', () => { zoomTrack(trackElement, document, container, style); });
+        trackElement.addEventListener("click", () => { zoomTrack(trackElement, document, container, style); });
         if (video.hasChildNodes()) {
             video.removeChild(video.firstChild);
         }
@@ -51,7 +51,7 @@ async function addLocalVideo(id) {
 
         // enable change camera button if there are multiple video devices
         let video_devices = navigator.mediaDevices.enumerateDevices().then(devices => {
-            video_devices = devices.filter(d => d.kind == 'videoinput');
+            video_devices = devices.filter(d => d.kind == "videoinput");
             if (video_devices.length > 1) {
                 change_camera_button.hidden = false;
             }
@@ -66,9 +66,9 @@ function connect(camera_name) {
     let promise = new Promise((resolve, reject) => {
         // get a token from the back end
         let data;
-        fetch('/login', {
-            method: 'POST',
-            body: JSON.stringify({'camera_name': camera_name})
+        fetch("/login", {
+            method: "POST",
+            body: JSON.stringify({"camera_name": camera_name})
         }).then(res => res.json()).then(_data => {
             // join video call
             data = _data;
@@ -76,8 +76,8 @@ function connect(camera_name) {
         }).then(_room => {
             room = _room;
             room.participants.forEach(participantConnected);
-            room.on('participantConnected', participantConnected);
-            room.on('participantDisconnected', participantDisconnected);
+            room.on("participantConnected", participantConnected);
+            room.on("participantDisconnected", participantDisconnected);
             connected = true;
             updateParticipantCount();
             resolve();
@@ -91,33 +91,33 @@ function connect(camera_name) {
 
 
 function participantConnected(participant) {
-    let participantDiv = document.createElement('div');
-    participantDiv.setAttribute('id', participant.sid);
-    participantDiv.setAttribute('class', 'participant');
+    let participantDiv = document.createElement("div");
+    participantDiv.setAttribute("id", participant.sid);
+    participantDiv.setAttribute("class", "participant");
 
-    let tracksDiv = document.createElement('div');
-    tracksDiv.setAttribute('class', 'video-container');
+    let tracksDiv = document.createElement("div");
+    tracksDiv.setAttribute("class", "video-container");
     participantDiv.appendChild(tracksDiv);
 
-    let labelDiv = document.createElement('div');
-    labelDiv.setAttribute('class', 'label participantLabel');
+    let labelDiv = document.createElement("div");
+    labelDiv.setAttribute("class", "label participantLabel");
     labelDiv.innerHTML = participant.identity;
     participantDiv.appendChild(labelDiv);
 
-    let rotateButton = document.createElement('button');
-    rotateButton.setAttribute('class', 'rotateVideo label');
-    rotateButton.innerHTML = '<i class="fas fa-undo"></i>';
-    rotateButton.addEventListener('click', () => {
+    let rotateButton = document.createElement("button");
+    rotateButton.setAttribute("class", "rotateVideo label");
+    rotateButton.innerHTML = "<i class='fas fa-undo'></i>";
+    rotateButton.addEventListener("click", () => {
         let v = participantDiv.firstElementChild.getElementsByTagName("video")[0];
         rotateVideo(v);
     });
     participantDiv.appendChild(rotateButton);
 
-    let muteAudioButton = document.createElement('button');
-    muteAudioButton.setAttribute('class', 'muteParticipantAudio label');
-    muteAudioButton.innerHTML = '<i class="fas fa-microphone"></i>';
-    muteAudioButton.addEventListener('click', () => {
-        if (muteAudioButton.innerHTML == '<i class="fas fa-microphone"></i>') {
+    let muteAudioButton = document.createElement("button");
+    muteAudioButton.setAttribute("class", "muteParticipantAudio label");
+    muteAudioButton.innerHTML = "<i class='fas fa-microphone'></i>";
+    muteAudioButton.addEventListener("click", () => {
+        if (muteAudioButton.innerHTML == "<i class='fas fa-microphone'></i>") {
             data_track.send("mute " + participant.sid);
         } else {
             data_track.send("unmute " + participant.sid);
@@ -131,10 +131,10 @@ function participantConnected(participant) {
         if (publication.isSubscribed) {
             trackSubscribed(tracksDiv, publication.track, participantDiv);
         }
-        publication.on('subscribed', track => handleTrackDisabled(track, participantDiv));
+        publication.on("subscribed", track => handleTrackDisabled(track, participantDiv));
     });
-    participant.on('trackSubscribed', track => trackSubscribed(tracksDiv, track, participantDiv));
-    participant.on('trackUnsubscribed', track => trackUnsubscribed(track, participantDiv));
+    participant.on("trackSubscribed", track => trackSubscribed(tracksDiv, track, participantDiv));
+    participant.on("trackUnsubscribed", track => trackUnsubscribed(track, participantDiv));
 
     updateParticipantCount();
     resizeVideosHelper();
@@ -151,23 +151,23 @@ function participantDisconnected(participant) {
 };
 
 function trackSubscribed(div, track, participantDiv) {
-    if (track.kind === 'data') {
-        track.on('message', data => receiveMuteInstructions(data));
-        data_track.send('sendState');
+    if (track.kind === "data") {
+        track.on("message", data => receiveMuteInstructions(data));
+        data_track.send("sendState");
     } else {
         let trackElement = track.attach();
-        if (track.kind === 'video') {
+        if (track.kind === "video") {
             trackElement.className = "deg0";
         }
-        trackElement.addEventListener('click', () => { zoomTrack(trackElement, document, container, style); });
+        trackElement.addEventListener("click", () => { zoomTrack(trackElement, document, container, style); });
         div.appendChild(trackElement);
     }
     handleTrackDisabled(track, participantDiv);
 };
 
 function trackUnsubscribed(track, participantDiv) {
-    if (track.kind == 'video') {
-        if (participantDiv.classList.contains('participantZoomed')) {
+    if (track.kind == "video") {
+        if (participantDiv.classList.contains("participantZoomed")) {
             zoomOut(document, container, style);
         }
         track.detach().forEach(element => {
@@ -178,7 +178,7 @@ function trackUnsubscribed(track, participantDiv) {
 
 function disconnect() {
     room.disconnect();
-    while (container.lastChild.id != 'local')
+    while (container.lastChild.id != "local")
         container.removeChild(container.lastChild);
     // in case the participant was hidden this resets it.
     container.lastChild.className = "participant";
@@ -194,7 +194,7 @@ function connectButtonHandler(event) {
     if (!connected) {
         let camera_name = camera_name_input.value;
         if (!camera_name) {
-            alert('Enter a camera name before connecting');
+            alert("Enter a camera name before connecting");
             return;
         }
 
@@ -205,18 +205,18 @@ function connectButtonHandler(event) {
         connect(camera_name).then(() => {
             // change navbar to joined view
             camera_name_input.hidden = true;
-            join_button.children[0].className = 'fas fa-sign-in-alt';
+            join_button.children[0].className = "fas fa-sign-in-alt";
             join_button.hidden = true;
             leave_button.hidden = false;
             leave_button.disabled = false;
             audio_mute_button.hidden = false;
             video_mute_button.hidden = false;
         }).catch(() => {
-            alert('Connection failed. Is the backend running?');
+            alert("Connection failed. Is the backend running?");
             // reset navbar
             join_button.disabled = false;
             join_button.hidden = false;
-            join_button.children[0].className = 'fas fa-sign-in-alt';
+            join_button.children[0].className = "fas fa-sign-in-alt";
         });
     } else {
         disconnect();
@@ -239,11 +239,11 @@ function audioButtonHandler(event) {
     room.localParticipant.audioTracks.forEach(publication => {
         if (publication.isTrackEnabled) {
             publication.track.disable()
-            audio_mute_button.firstChild.className = 'fas fa-microphone-slash';
+            audio_mute_button.firstChild.className = "fas fa-microphone-slash";
             muted = true;
         } else {
             publication.track.enable()
-            audio_mute_button.firstChild.className = 'fas fa-microphone';
+            audio_mute_button.firstChild.className = "fas fa-microphone";
             muted = false;
         }
     });
@@ -263,12 +263,12 @@ function videoButtonHandler(event) {
     room.localParticipant.videoTracks.forEach(publication => {
         if (publication.isTrackEnabled) {
             publication.track.disable();
-            video_mute_button.firstChild.className = 'fas fa-video-slash';
-            document.getElementById('local').hidden = true;
+            video_mute_button.firstChild.className = "fas fa-video-slash";
+            document.getElementById("local").hidden = true;
         } else {
             publication.track.enable()
-            video_mute_button.firstChild.className = 'fas fa-video';
-            document.getElementById('local').hidden = false;
+            video_mute_button.firstChild.className = "fas fa-video";
+            document.getElementById("local").hidden = false;
         }
     });
     resizeVideosHelper();
@@ -290,9 +290,9 @@ const receiveMuteInstructions = (data) => {
         } else {
             let participant = document.getElementById(sid);
             if (action == "mute") {
-                participant.lastChild.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+                participant.lastChild.innerHTML = "<i class='fas fa-microphone-slash'></i>";
             } else {
-                participant.lastChild.innerHTML = '<i class="fas fa-microphone"></i>';
+                participant.lastChild.innerHTML = "<i class='fas fa-microphone'></i>";
             }
         }
     }
@@ -301,22 +301,22 @@ const receiveMuteInstructions = (data) => {
 
 function updateParticipantCount() {
     if (!connected)
-        count.innerHTML = 'Disconnected.';
+        count.innerHTML = "Disconnected.";
     else
-        count.innerHTML = (room.participants.size + 1) + ' participants online.';
+        count.innerHTML = (room.participants.size + 1) + " participants online.";
 };
 
 function handleTrackDisabled(track, participantDiv) {
-    track.on('disabled', () => {
+    track.on("disabled", () => {
         /* Hide the associated <video> element. */
-        if (track.kind == 'video') {
+        if (track.kind == "video") {
             participantDiv.hidden = true;
             resizeVideosHelper();
         }
     });
-    track.on('enabled', () => {
+    track.on("enabled", () => {
         /* Hide the associated <video> element. */
-        if (track.kind == 'video') {
+        if (track.kind == "video") {
             participantDiv.hidden = false;
             resizeVideosHelper();
         }
@@ -331,7 +331,7 @@ async function changeCameraHandler(event) {
     }
 
     let video_devices = await navigator.mediaDevices.enumerateDevices();
-    video_devices = video_devices.filter(d => d.kind == 'videoinput');
+    video_devices = video_devices.filter(d => d.kind == "videoinput");
 
     let new_video_device = null;
     for (let i = 0; i < video_devices.length; i++) {
@@ -355,17 +355,17 @@ function resizeVideosHelper() {
 }
 
 function rotateLocalVideo(v) {
-    rotateVideo(document.getElementById('local').firstElementChild.getElementsByTagName("video")[0]);
+    rotateVideo(document.getElementById("local").firstElementChild.getElementsByTagName("video")[0]);
 }
 
 addLocalVideo();
 addLocalAudioTrack();
 addLocalDataTrack();
 
-join_button.addEventListener('click', connectButtonHandler);
-leave_button.addEventListener('click', connectButtonHandler);
-audio_mute_button.addEventListener('click', audioButtonHandler);
-video_mute_button.addEventListener('click', videoButtonHandler);
-change_camera_button.addEventListener('click', changeCameraHandler);
-rotate_video_button.addEventListener('click', rotateLocalVideo);
-window.addEventListener('resize', resizeVideosHelper, true);
+join_button.addEventListener("click", connectButtonHandler);
+leave_button.addEventListener("click", connectButtonHandler);
+audio_mute_button.addEventListener("click", audioButtonHandler);
+video_mute_button.addEventListener("click", videoButtonHandler);
+change_camera_button.addEventListener("click", changeCameraHandler);
+rotate_video_button.addEventListener("click", rotateLocalVideo);
+window.addEventListener("resize", resizeVideosHelper, true);

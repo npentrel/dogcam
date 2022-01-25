@@ -44,36 +44,36 @@ export function resizeVideos(document, container, style) {
 
 export function zoomOut(document, container, style) {
     container.childNodes.forEach(participant => {
-        if (participant.classList && participant.classList.contains('participant')) {
+        if (participant.classList && participant.classList.contains("participant")) {
             participant.childNodes[0].childNodes.forEach(track => {
-                if (track.classList.contains('trackZoomed')) {
-                    track.classList.remove('trackZoomed');
+                if (track.classList.contains("trackZoomed")) {
+                    track.classList.remove("trackZoomed");
                 }
             });
-            participant.classList.remove('participantZoomed')
-            participant.classList.remove('participantHidden')
+            participant.classList.remove("participantZoomed")
+            participant.classList.remove("participantHidden")
         }
     });
     resizeVideos(document, container, style);
 }
 
 export function zoomTrack(trackElement, document, container, style) {
-    if (!trackElement.classList.contains('trackZoomed')) {
+    if (!trackElement.classList.contains("trackZoomed")) {
         // zoom in
         container.childNodes.forEach(participant => {
-            if (participant.classList && participant.classList.contains('participant')) {
+            if (participant.classList && participant.classList.contains("participant")) {
                 let zoomed = false;
                 participant.childNodes[0].childNodes.forEach(track => {
                     if (track === trackElement) {
-                        track.classList.add('trackZoomed')
+                        track.classList.add("trackZoomed")
                         zoomed = true;
                     }
                 });
                 if (zoomed) {
-                    participant.classList.add('participantZoomed');
+                    participant.classList.add("participantZoomed");
                 }
                 else {
-                    participant.classList.add('participantHidden');
+                    participant.classList.add("participantHidden");
                 }
             }
         });
