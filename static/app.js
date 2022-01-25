@@ -12,25 +12,27 @@ const count = document.getElementById("count");
 const style = document.createElement("style");
 document.head.appendChild(style);
 
-let connected = false;
-let room;
-let video_track;
-let audio_track;
-let data_track;
-let current_camera;
-let video;
-let muted = false;
+const app = {
+    connected: false,
+    muted: false,
+    room: null,
+    video_track: null,
+    audio_track: null,
+    data_track: null,
+    current_camera: null,
+    video: null
+}
 
 // add tracks
 
 function addLocalAudioTrack() {
     Twilio.Video.createLocalAudioTrack().then(track => {
-        audio_track = track;
+        app.audio_track = track;
     });
 };
 
 function addLocalDataTrack() {
-    data_track = Twilio.Video.LocalDataTrack();
+    app.data_track = Twilio.Video.LocalDataTrack();
 };
 
 async function addLocalVideo(id) {
@@ -38,16 +40,16 @@ async function addLocalVideo(id) {
     if(id){
         options = { deviceId: id };
     }
-    video = document.getElementById("local").firstChild;
+    app.video = document.getElementById("local").firstChild;
     await Twilio.Video.createLocalVideoTrack(options).then(track => {
         let trackElement = track.attach();
         trackElement.addEventListener("click", () => { zoomTrack(trackElement, document, container, style); });
-        if (video.hasChildNodes()) {
-            video.removeChild(video.firstChild);
+        if (app.video.hasChildNodes()) {
+            app.video.removeChild(app.video.firstChild);
         }
         trackElement.className = "deg0";
-        video.appendChild(trackElement);
-        video_track = track;
+        app.video.appendChild(trackElement);
+        app.video_track = track;
 
         // enable change camera button if there are multiple video devices
         let video_devices = navigator.mediaDevices.enumerateDevices().then(devices => {
@@ -57,7 +59,7 @@ async function addLocalVideo(id) {
             }
         });
     });
-    return video_track;
+    return app.video_track;
 };
 
 // connect to Twilio Video
@@ -72,13 +74,13 @@ function connect(camera_name) {
         }).then(res => res.json()).then(_data => {
             // join video call
             data = _data;
-            return Twilio.Video.connect(data.token, {tracks: [video_track, audio_track, data_track]});
+            return Twilio.Video.connect(data.token, {tracks: [app.video_track, app.audio_track, app.data_track]});
         }).then(_room => {
-            room = _room;
-            room.participants.forEach(participantConnected);
-            room.on("participantConnected", participantConnected);
-            room.on("participantDisconnected", participantDisconnected);
-            connected = true;
+            app.room = _room;
+            app.room.participants.forEach(participantConnected);
+            app.room.on("participantConnected", participantConnected);
+            app.room.on("participantDisconnected", participantDisconnected);
+            app.connected = true;
             updateParticipantCount();
             resolve();
         }).catch(e => {
@@ -118,9 +120,9 @@ function participantConnected(participant) {
     muteAudioButton.innerHTML = "<i class='fas fa-microphone'></i>";
     muteAudioButton.addEventListener("click", () => {
         if (muteAudioButton.innerHTML == "<i class='fas fa-microphone'></i>") {
-            data_track.send("mute " + participant.sid);
+            app.data_track.send("mute " + participant.sid);
         } else {
-            data_track.send("unmute " + participant.sid);
+            app.data_track.send("unmute " + participant.sid);
         }
     });
     participantDiv.appendChild(muteAudioButton);
@@ -153,7 +155,7 @@ function participantDisconnected(participant) {
 function trackSubscribed(div, track, participantDiv) {
     if (track.kind === "data") {
         track.on("message", data => receiveMuteInstructions(data));
-        data_track.send("sendState");
+        app.data_track.send("sendState");
     } else {
         let trackElement = track.attach();
         if (track.kind === "video") {
@@ -177,12 +179,12 @@ function trackUnsubscribed(track, participantDiv) {
 };
 
 function disconnect() {
-    room.disconnect();
+    app.room.disconnect();
     while (container.lastChild.id != "local")
         container.removeChild(container.lastChild);
     // in case the participant was hidden this resets it.
     container.lastChild.className = "participant";
-    connected = false;
+    app.connected = false;
     updateParticipantCount();
     resizeVideosHelper();
 };
@@ -191,7 +193,7 @@ function disconnect() {
 
 function connectButtonHandler(event) {
     event.preventDefault();
-    if (!connected) {
+    if (!app.connected) {
         let camera_name = camera_name_input.value;
         if (!camera_name) {
             alert("Enter a camera name before connecting");
@@ -227,7 +229,7 @@ function connectButtonHandler(event) {
         leave_button.disabled = true;
         audio_mute_button.hidden = true;
         video_mute_button.hidden = true;
-        connected = false;
+        app.connected = false;
     }
 };
 
@@ -236,23 +238,23 @@ function audioButtonHandler(event) {
        event.preventDefault();
     }
 
-    room.localParticipant.audioTracks.forEach(publication => {
+    app.room.localParticipant.audioTracks.forEach(publication => {
         if (publication.isTrackEnabled) {
             publication.track.disable()
             audio_mute_button.firstChild.className = "fas fa-microphone-slash";
-            muted = true;
+            app.muted = true;
         } else {
             publication.track.enable()
             audio_mute_button.firstChild.className = "fas fa-microphone";
-            muted = false;
+            app.muted = false;
         }
     });
 
     // send sid and action to listeners so they know our audio state
-    if (muted) {
-        data_track.send("mute " + room.localParticipant.sid);
+    if (app.muted) {
+        app.data_track.send("mute " + app.room.localParticipant.sid);
     } else {
-        data_track.send("unmute " + room.localParticipant.sid);
+        app.data_track.send("unmute " + app.room.localParticipant.sid);
     }
 
 }
@@ -260,7 +262,7 @@ function audioButtonHandler(event) {
 function videoButtonHandler(event) {
     event.preventDefault();
 
-    room.localParticipant.videoTracks.forEach(publication => {
+    app.room.localParticipant.videoTracks.forEach(publication => {
         if (publication.isTrackEnabled) {
             publication.track.disable();
             video_mute_button.firstChild.className = "fas fa-video-slash";
@@ -281,11 +283,11 @@ const receiveMuteInstructions = (data) => {
     [action, sid] = data.split(" ");
 
     if (action == "sendState") {
-        if (muted) {
-            data_track.send("mute " + room.localParticipant.sid);
+        if (app.muted) {
+            app.data_track.send("mute " + app.room.localParticipant.sid);
         }
     } else {
-        if (sid == room.localParticipant.sid) {
+        if (sid == app.room.localParticipant.sid) {
             audioButtonHandler();
         } else {
             let participant = document.getElementById(sid);
@@ -300,10 +302,10 @@ const receiveMuteInstructions = (data) => {
 }
 
 function updateParticipantCount() {
-    if (!connected)
+    if (!app.connected)
         count.innerHTML = "Disconnected.";
     else
-        count.innerHTML = (room.participants.size + 1) + " participants online.";
+        count.innerHTML = (app.room.participants.size + 1) + " participants online.";
 };
 
 function handleTrackDisabled(track, participantDiv) {
@@ -326,8 +328,8 @@ function handleTrackDisabled(track, participantDiv) {
 async function changeCameraHandler(event) {
     event.preventDefault();
 
-    if (current_camera == null) {
-        current_camera = video_track.mediaStreamTrack.label;
+    if (app.current_camera == null) {
+        app.current_camera = app.video_track.mediaStreamTrack.label;
     }
 
     let video_devices = await navigator.mediaDevices.enumerateDevices();
@@ -335,19 +337,19 @@ async function changeCameraHandler(event) {
 
     let new_video_device = null;
     for (let i = 0; i < video_devices.length; i++) {
-        if (video_devices[i].label == current_camera) {
+        if (video_devices[i].label == app.current_camera) {
             new_video_device = video_devices[(i+1)%video_devices.length];
         }
     }
-    if (room) {
-        room.localParticipant.unpublishTrack(video_track);
+    if (app.room) {
+        app.room.localParticipant.unpublishTrack(app.video_track);
     }
-    video_track = await addLocalVideo(new_video_device.deviceId);
-    if (room) {
-        room.localParticipant.publishTrack(video_track);
+    app.video_track = await addLocalVideo(new_video_device.deviceId);
+    if (app.room) {
+        app.room.localParticipant.publishTrack(app.video_track);
     }
 
-    current_camera = new_video_device.label;
+    app.current_camera = new_video_device.label;
 }
 
 function resizeVideosHelper() {
